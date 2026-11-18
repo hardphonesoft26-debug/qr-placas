@@ -272,14 +272,14 @@ async function panel() {
 function showQr(l) {
   const q = qrcode(0, 'M'); q.addData(qrUrl(l)); q.make();
   const m = document.createElement('div'); m.className = 'modal';
-  m.innerHTML = '<div class="sheet"><h2>' + esc(l.name) + '</h2><div class="qrbox">' + q.createSvgTag(6, 2) + '</div><div class="url">' + esc(qrUrl(l)) + '</div>' +
+  m.innerHTML = '<div class="sheet"><h2>' + esc(l.name) + '</h2><div class="qrbox">' + q.createSvgTag(6, 2) + '</div><div class="url"><b>Destino:</b> ' + esc(l.url) + '</div>' +
     '<div class="row2"><button class="btn sm" id="ds">SVG</button><button class="btn pri sm" id="dp">Descargar PNG</button></div>' +
-    '<div class="row2" style="margin-top:8px"><button class="btn sm" id="cp">Copiar enlace</button><button class="btn sm" id="cl">Cerrar</button></div></div>';
+    '<div class="row2" style="margin-top:8px"><button class="btn sm" id="cp">Copiar destino</button><button class="btn sm" id="cl">Cerrar</button></div></div>';
   document.body.appendChild(m);
   const close = () => m.remove();
   m.onclick = e => { if (e.target === m) close() };
   m.querySelector('#cl').onclick = close;
-  m.querySelector('#cp').onclick = () => { navigator.clipboard.writeText(qrUrl(l)).then(() => toast('Enlace copiado'), () => toast('No se pudo copiar', true)) };
+  m.querySelector('#cp').onclick = () => { navigator.clipboard.writeText(l.url).then(() => toast('Enlace de destino copiado'), () => toast('No se pudo copiar', true)) };
   const save = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click() };
   m.querySelector('#ds').onclick = () => save(new Blob([q.createSvgTag(10, 4)], { type: 'image/svg+xml' }), l.code + '.svg');
   m.querySelector('#dp').onclick = () => {
