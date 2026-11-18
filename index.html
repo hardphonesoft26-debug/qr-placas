@@ -27,48 +27,122 @@ button{font:inherit;padding:9px 14px;border-radius:10px;border:1px solid var(--b
 <div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
-// === CONFIGURACIÓN: pega aquí la URL de tu Firebase Realtime Database (sin / al final) ===
+// === CONFIGURACIÓN ===
 const DB = "https://qr-placas-default-rtdb.firebaseio.com";
-// =========================================================================================
+const API_KEY = "AIzaSyDmikmWfGnUUj_0k_40gynbCOsHrqa55Vo";
+// =====================
 
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const okUrl = u => { try { const x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:' } catch (e) { return false } };
 const okCode = c => /^[a-z0-9-]{1,60}$/.test(c);
+const slug = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const base = location.origin + location.pathname;
 const qrUrl = l => base + '?c=' + l.code;
-const getLinks = () => fetch('links.json', { cache: 'no-store' }).then(r => r.json());
+let session = null, msg = '', openQr = null;
+try { session = JSON.parse(localStorage.getItem('qrsession') || 'null') } catch (e) {}
+
+async function idToken() {
+  const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(session.refresh)
+  });
+  const d = await r.json();
+  if (!d.id_token) throw new Error('sesion');
+  return d.id_token;
+}
+async function login(email, pw) {
+  const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + API_KEY, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: pw, returnSecureToken: true })
+  });
+  const d = await r.json();
+  if (!d.refreshToken) return false;
+  session = { refresh: d.refreshToken, email };
+  try { localStorage.setItem('qrsession', JSON.stringify(session)) } catch (e) {}
+  return true;
+}
+function logout() { session = null; try { localStorage.removeItem('qrsession') } catch (e) {} admin() }
+async function writeLink(code, obj) {
+  try {
+    const t = await idToken();
+    const r = await fetch(DB + '/links/' + code + '.json?auth=' + t, { method: obj ? 'PUT' : 'DELETE', body: obj ? JSON.stringify(obj) : undefined });
+    return r.ok;
+  } catch (e) { return false }
+}
+async function readLinks() {
+  const o = (await (await fetch(DB + '/links.json')).json()) || {};
+  return Object.keys(o).map(k => ({ code: k, name: o[k].name, url: o[k].url }));
+}
 
 async function redirect(code) {
-  let links = [];
-  try { links = await getLinks() } catch (e) {}
-  const l = okCode(code) && links.find(x => x.code === code);
+  let l = null;
+  try { if (okCode(code)) l = await (await fetch(DB + '/links/' + code + '.json')).json() } catch (e) {}
   if (!l || !okUrl(l.url)) {
     app.innerHTML = '<div class="center"><h1>Código no encontrado</h1><p class="mu">Este QR ya no está activo.</p></div>';
     return;
   }
   app.innerHTML = '<div class="center"><h1>Redirigiendo…</h1><p><a href="' + esc(l.url) + '">' + esc(l.url) + '</a></p></div>';
-  const count = fetch(DB + '/scans/' + l.code + '.json', {
-    method: 'PUT', keepalive: true,
-    body: JSON.stringify({ '.sv': { increment: 1 } })
+  const count = fetch(DB + '/scans/' + code + '.json', {
+    method: 'PUT', keepalive: true, body: JSON.stringify({ '.sv': { increment: 1 } })
   }).catch(() => {});
   await Promise.race([count, new Promise(r => setTimeout(r, 900))]);
   location.replace(l.url);
 }
 
 async function admin() {
-  app.innerHTML = '<p class="mu">Cargando…</p>';
   let links = [], scans = {};
-  try { links = await getLinks() } catch (e) { app.innerHTML = '<p>No se pudo leer links.json</p>'; return }
+  try { links = await readLinks() } catch (e) { app.innerHTML = '<p>No se pudo conectar con Firebase.</p>'; return }
   try { scans = (await (await fetch(DB + '/scans.json')).json()) || {} } catch (e) {}
   const total = links.reduce((a, l) => a + (scans[l.code] || 0), 0);
   let h = '<h1>QR dinámico</h1><p class="mu">Escaneos totales: <b>' + total + '</b></p>';
+  if (msg) h += '<div class="card">' + esc(msg) + '</div>';
+  if (session) {
+    h += '<div class="card"><h2>Nuevo QR</h2><label>Nombre</label><input id="n" placeholder="Ej. Café Luna"><label>ID del QR (opcional)</label><input id="i" placeholder="se genera del nombre"><label>Enlace de destino</label><input id="u" inputmode="url" placeholder="https://search.google.com/local/writereview?placeid=…"><button class="pri" id="add">Crear QR</button></div>';
+  }
+  if (!links.length) h += '<p class="mu">Aún no hay QR creados.</p>';
   links.forEach((l, i) => {
-    h += '<div class="card"><div class="top"><h2>' + esc(l.name) + '</h2><span class="n">' + (scans[l.code] || 0) + '</span></div>' +
-      '<div class="url">→ ' + esc(l.url) + '</div><button data-qr="' + i + '">Ver QR</button><div id="q' + i + '"></div></div>';
+    h += '<div class="card"><div class="top"><h2>' + esc(l.name) + '</h2><span class="n">' + (scans[l.code] || 0) + '</span></div><div class="url">ID: ' + esc(l.code) + '</div>';
+    if (session) h += '<label>Destino</label><input data-u="' + i + '" inputmode="url" value="' + esc(l.url) + '">';
+    else h += '<div class="url">→ ' + esc(l.url) + '</div>';
+    h += '<button data-qr="' + i + '">' + (openQr === i ? 'Ocultar QR' : 'Ver QR') + '</button>';
+    if (session) h += '<button data-save="' + i + '">Guardar destino</button><button class="del" data-del="' + i + '">Borrar</button>';
+    h += '<div id="q' + i + '"></div></div>';
   });
+  if (session) h += '<p class="mu">Sesión: ' + esc(session.email) + ' · <a href="#" id="out">Salir</a></p>';
+  else h += '<div class="card"><h2>Administrador</h2><label>Correo</label><input id="e" type="email"><label>Contraseña</label><input id="p" type="password"><button class="pri" id="in">Entrar</button></div>';
   app.innerHTML = h;
-  app.querySelectorAll('[data-qr]').forEach(b => b.onclick = () => showQr(links[+b.dataset.qr], +b.dataset.qr));
+  const g = id => document.getElementById(id);
+  if (g('in')) g('in').onclick = async () => {
+    msg = (await login(g('e').value.trim(), g('p').value)) ? '' : 'Correo o contraseña incorrectos.';
+    admin();
+  };
+  if (g('out')) g('out').onclick = e => { e.preventDefault(); logout() };
+  if (g('add')) g('add').onclick = async () => {
+    const name = g('n').value.trim(), url = g('u').value.trim();
+    let code = slug(g('i').value.trim() || name);
+    if (!name || !code || !okUrl(url)) { msg = 'Escribe un nombre y un enlace válido (https://…).'; admin(); return }
+    if (links.some(x => x.code === code)) { msg = 'Ya existe un QR con ese ID.'; admin(); return }
+    msg = (await writeLink(code, { name, url })) ? 'QR creado.' : 'No se pudo guardar. Vuelve a entrar como administrador.';
+    openQr = null; admin();
+  };
+  app.querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
+    const l = links[+b.dataset.save], v = app.querySelector('[data-u="' + b.dataset.save + '"]').value.trim();
+    if (!okUrl(v)) { msg = 'Enlace inválido.'; admin(); return }
+    msg = (await writeLink(l.code, { name: l.name, url: v })) ? 'Destino actualizado.' : 'No se pudo guardar.';
+    admin();
+  });
+  app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    const l = links[+b.dataset.del];
+    if (!confirm('¿Borrar este QR? Los QR impresos dejarán de funcionar.')) return;
+    msg = (await writeLink(l.code, null)) ? 'QR borrado.' : 'No se pudo borrar.';
+    admin();
+  });
+  app.querySelectorAll('[data-qr]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.qr;
+    if (openQr === i) { openQr = null; document.getElementById('q' + i).innerHTML = ''; b.textContent = 'Ver QR'; return }
+    openQr = i; b.textContent = 'Ocultar QR'; showQr(links[i], i);
+  });
 }
 
 function showQr(l, i) {
