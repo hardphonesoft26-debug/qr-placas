@@ -29,6 +29,9 @@ input{width:100%;padding:13px 14px;border:1.5px solid var(--bd);border-radius:12
 input:focus{border-color:var(--ac);box-shadow:0 0 0 4px rgba(99,102,241,.18)}
 .chk{display:flex;align-items:center;gap:10px;font-size:14px;margin:0 0 10px;cursor:pointer;user-select:none}
 .chk input{width:20px;height:20px;padding:0;margin:0;accent-color:var(--ac);flex:none}
+.err{color:var(--dg);font-size:13px;margin-top:6px;min-height:0}
+.err.warn{color:#b45309}
+input.bad{border-color:var(--dg)}
 /* buttons */
 .btn{font:inherit;font-weight:600;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;background:var(--bg);color:var(--tx);border:1.5px solid var(--bd);transition:transform .1s}
 .btn:active{transform:scale(.97)}
@@ -116,15 +119,25 @@ async function idToken() {
   return d.id_token;
 }
 async function login(email, pw, remember) {
-  const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + API_KEY, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password: pw, returnSecureToken: true })
-  });
-  const d = await r.json();
-  if (!d.refreshToken) return false;
+  let d;
+  try {
+    const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + API_KEY, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw, returnSecureToken: true })
+    });
+    d = await r.json();
+  } catch (e) { return { ok: false, msg: 'Sin conexión. Revisa tu internet e inténtalo de nuevo.' } }
+  if (!d.refreshToken) {
+    const c = (d.error && d.error.message) || '';
+    let msg = 'Correo o contraseña incorrectos.';
+    if (c.startsWith('TOO_MANY_ATTEMPTS')) msg = 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+    else if (c.startsWith('USER_DISABLED')) msg = 'Esta cuenta está deshabilitada.';
+    else if (c.startsWith('INVALID_EMAIL')) msg = 'El correo no es válido.';
+    return { ok: false, msg };
+  }
   session = { refresh: d.refreshToken, email };
   try { localStorage.removeItem('qrsession'); sessionStorage.removeItem('qrsession'); (remember ? localStorage : sessionStorage).setItem('qrsession', JSON.stringify(session)) } catch (e) {}
-  return true;
+  return { ok: true };
 }
 function logout(note) {
   session = null;
@@ -156,19 +169,38 @@ async function redirect(code) {
 }
 
 /* ---------- login ---------- */
+const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 function loginView() {
   app.innerHTML = '<div class="login"><div class="brand">' + LOGO + '</div><h1>Panel de QR</h1><p class="sub">Inicia sesión para administrar tus códigos</p>' +
-    '<form class="box" id="f"><div class="field"><label for="e">Correo</label><input id="e" type="email" autocomplete="username" placeholder="tucorreo@gmail.com" required></div>' +
-    '<div class="field"><label for="p">Contraseña</label><input id="p" type="password" autocomplete="current-password" placeholder="••••••••" required></div>' +
+    '<form class="box" id="f" novalidate><div class="field"><label for="e">Correo</label><input id="e" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="tucorreo@gmail.com" maxlength="120" aria-describedby="ee"><div class="err" id="ee" role="alert"></div></div>' +
+    '<div class="field"><label for="p">Contraseña</label><input id="p" type="password" autocomplete="current-password" placeholder="••••••••" maxlength="100" aria-describedby="pe"><div class="err" id="pe" role="alert"></div><div class="err warn" id="cl" style="display:none">Tienes las mayúsculas activadas (Bloq Mayús).</div></div>' +
     '<label class="chk"><input type="checkbox" id="sp"> Mostrar contraseña</label>' +
     '<label class="chk"><input type="checkbox" id="rm" checked> Recordarme en este equipo</label>' +
-    '<button class="btn pri block" id="go" type="submit" style="margin-top:6px">Entrar</button></form></div>';
-  document.getElementById('sp').onchange = ev => { document.getElementById('p').type = ev.target.checked ? 'text' : 'password' };
-  document.getElementById('f').onsubmit = async ev => {
+    '<div class="err" id="fe" role="alert" style="margin-bottom:8px"></div>' +
+    '<button class="btn pri block" id="go" type="submit">Entrar</button></form></div>';
+  const g = id => document.getElementById(id);
+  const setErr = (id, m, inp) => { g(id).textContent = m; if (inp) { g(inp).classList.toggle('bad', !!m); g(inp).setAttribute('aria-invalid', m ? 'true' : 'false') } };
+  g('sp').onchange = ev => { g('p').type = ev.target.checked ? 'text' : 'password' };
+  g('e').oninput = () => { setErr('ee', '', 'e'); setErr('fe', '') };
+  g('p').oninput = () => { setErr('pe', '', 'p'); setErr('fe', '') };
+  const caps = ev => { g('cl').style.display = ev.getModifierState && ev.getModifierState('CapsLock') ? 'block' : 'none' };
+  g('p').onkeyup = caps; g('p').onkeydown = caps; g('p').onblur = () => { g('cl').style.display = 'none' };
+  g('e').onblur = () => { const v = g('e').value.trim(); if (v && !emailOk(v)) setErr('ee', 'Escribe un correo válido, por ejemplo nombre@gmail.com', 'e') };
+  g('f').onsubmit = async ev => {
     ev.preventDefault();
-    const b = document.getElementById('go'); b.disabled = true; b.textContent = 'Entrando…';
-    const ok = await login(document.getElementById('e').value.trim(), document.getElementById('p').value, document.getElementById('rm').checked);
-    if (ok) panel(); else { b.disabled = false; b.textContent = 'Entrar'; toast('Correo o contraseña incorrectos', true) }
+    if (g('go').disabled) return;
+    const email = g('e').value.trim().toLowerCase(), pw = g('p').value;
+    let bad = null;
+    if (!email) { setErr('ee', 'Escribe tu correo', 'e'); bad = 'e' }
+    else if (!emailOk(email)) { setErr('ee', 'Escribe un correo válido, por ejemplo nombre@gmail.com', 'e'); bad = 'e' }
+    if (!pw) { setErr('pe', 'Escribe tu contraseña', 'p'); bad = bad || 'p' }
+    else if (pw.length < 6) { setErr('pe', 'La contraseña debe tener al menos 6 caracteres', 'p'); bad = bad || 'p' }
+    if (bad) { g(bad).focus(); return }
+    g('go').disabled = true; g('go').textContent = 'Entrando…';
+    const r = await login(email, pw, g('rm').checked);
+    if (r.ok) { panel(); return }
+    g('go').disabled = false; g('go').textContent = 'Entrar';
+    setErr('fe', r.msg); g('p').value = ''; g('p').focus();
   };
 }
 
