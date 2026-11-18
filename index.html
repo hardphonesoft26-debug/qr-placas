@@ -186,7 +186,7 @@ async function panel() {
     '<button class="btn pri block" id="tg">+ Nuevo QR</button>' +
     '<div class="card" id="nf" style="display:none;margin-top:14px"><h2 style="margin-bottom:14px">Nuevo QR</h2>' +
     '<div class="field"><label>Negocio (a quién pertenece)</label><input id="nn" placeholder="Ej. Café Luna"></div>' +
-    '<div class="field"><label>ID del QR <span style="font-weight:400;color:var(--mu)">(opcional)</span></label><input id="ni" placeholder="Se crea solo a partir del negocio"><small>Solo letras, números y guiones. No se puede cambiar después.</small></div>' +
+    '<p class="sub" style="margin:-4px 0 14px;font-size:13px">El ID del QR se asigna solo, en secuencia (11, 12, 13…).</p>' +
     '<div class="field"><label>Enlace de destino</label><input id="nu" inputmode="url" placeholder="https://search.google.com/local/writereview?placeid=…"></div>' +
     '<button class="btn pri block" id="add">Crear QR</button></div>';
   h += '<div class="bar"><h2>Tus códigos</h2></div>';
@@ -203,12 +203,18 @@ async function panel() {
   g('out').onclick = () => logout();
   g('tg').onclick = () => { const f = g('nf'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; if (f.style.display === 'block') g('nn').focus() };
   g('add').onclick = async () => {
-    const name = g('nn').value.trim(), url = g('nu').value.trim(), code = slug(g('ni').value.trim() || name);
-    if (!name || !code) return toast('Escribe el nombre', true);
+    const name = g('nn').value.trim(), url = g('nu').value.trim();
+    if (!name) return toast('Escribe el nombre del negocio', true);
     if (!okUrl(url)) return toast('El enlace debe empezar con https://', true);
-    if (links.some(x => x.code === code)) return toast('Ya existe un QR con ese ID', true);
     g('add').disabled = true;
-    if (await writeLink(code, { name, url })) { toast('QR creado'); panel() } else { g('add').disabled = false; toast('No se pudo guardar', true) }
+    let c = 0;
+    try { const r = await (await fetch(DB + '/counter.json?auth=' + t)).json(); if (typeof r === 'number') c = r } catch (e) {}
+    const maxId = Math.max(10, ...links.map(x => /^\d+$/.test(x.code) ? +x.code : 0));
+    const n = Math.max(c, maxId) + 1, code = String(n);
+    if (await writeLink(code, { name, url })) {
+      try { await fetch(DB + '/counter.json?auth=' + t, { method: 'PUT', body: String(n) }) } catch (e) {}
+      toast('QR creado con ID ' + code); panel();
+    } else { g('add').disabled = false; toast('No se pudo guardar', true) }
   };
   app.querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
     const i = +b.dataset.save, l = links[i];
