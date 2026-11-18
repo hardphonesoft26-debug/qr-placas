@@ -54,6 +54,9 @@ input:focus{border-color:var(--ac);box-shadow:0 0 0 4px rgba(99,102,241,.18)}
 .dest input{background:var(--card)}
 .acts{display:flex;gap:8px;flex-wrap:wrap}
 .acts .grow{flex:1;min-width:140px}
+.qrlink{background:var(--bg);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:var(--mu);word-break:break-all}
+.qrlink span{display:block;font-size:12px;font-weight:600;margin-bottom:2px}
+.qrlink mark{background:rgba(99,102,241,.18);color:var(--ac);font-weight:700;border-radius:6px;padding:1px 5px}
 .empty{text-align:center;color:var(--mu);padding:30px 10px}
 /* modal */
 .modal{position:fixed;inset:0;background:rgba(10,12,30,.6);display:flex;align-items:center;justify-content:center;padding:18px;z-index:20}
@@ -182,15 +185,16 @@ async function panel() {
     '<div class="stats"><div class="stat"><b>' + links.length + '</b><span>QR creados</span></div><div class="stat"><b>' + total + '</b><span>Escaneos totales</span></div></div>' +
     '<button class="btn pri block" id="tg">+ Nuevo QR</button>' +
     '<div class="card" id="nf" style="display:none;margin-top:14px"><h2 style="margin-bottom:14px">Nuevo QR</h2>' +
-    '<div class="field"><label>Nombre del negocio</label><input id="nn" placeholder="Ej. Café Luna"></div>' +
-    '<div class="field"><label>ID del QR <span style="font-weight:400;color:var(--mu)">(opcional)</span></label><input id="ni" placeholder="Se crea solo a partir del nombre"><small>Solo letras, números y guiones. No se puede cambiar después.</small></div>' +
+    '<div class="field"><label>Negocio (a quién pertenece)</label><input id="nn" placeholder="Ej. Café Luna"></div>' +
+    '<div class="field"><label>ID del QR <span style="font-weight:400;color:var(--mu)">(opcional)</span></label><input id="ni" placeholder="Se crea solo a partir del negocio"><small>Solo letras, números y guiones. No se puede cambiar después.</small></div>' +
     '<div class="field"><label>Enlace de destino</label><input id="nu" inputmode="url" placeholder="https://search.google.com/local/writereview?placeid=…"></div>' +
     '<button class="btn pri block" id="add">Crear QR</button></div>';
   h += '<div class="bar"><h2>Tus códigos</h2></div>';
   if (!links.length) h += '<div class="empty">Aún no tienes QR.<br>Toca «Nuevo QR» para crear el primero.</div>';
   links.forEach((l, i) => {
     h += '<div class="card"><div class="chead"><div class="av">' + esc((l.name || '?').charAt(0).toUpperCase()) + '</div><div><h2>' + esc(l.name) + '</h2><span class="id">ID: ' + esc(l.code) + '</span></div><span class="pill">' + (scans[l.code] || 0) + ' escaneos</span></div>' +
-      '<div class="field"><label>Nombre</label><input data-n="' + i + '" value="' + esc(l.name) + '"></div>' +
+      '<div class="qrlink"><span>Enlace del QR (el ID forma parte del enlace)</span>' + esc(base) + '?c=<mark>' + esc(l.code) + '</mark></div>' +
+      '<div class="field"><label>Negocio dueño de esta placa</label><input data-n="' + i + '" value="' + esc(l.name) + '"><small>Si el negocio ya no la quiere, cambia aquí el nombre y abajo el destino para dársela a otro. El QR impreso sigue igual.</small></div>' +
       '<div class="dest"><div class="field" style="margin:0"><label>Enlace de destino (a dónde lleva el QR)</label><input data-u="' + i + '" inputmode="url" value="' + esc(l.url) + '"></div></div>' +
       '<div class="acts"><button class="btn pri grow" data-save="' + i + '">Guardar cambios</button><button class="btn grow" data-qr="' + i + '">Ver QR</button><button class="btn dg" data-del="' + i + '">Borrar</button></div></div>';
   });
