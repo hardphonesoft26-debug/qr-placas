@@ -2,29 +2,79 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>QR dinámico</title>
+<meta name="theme-color" content="#4f46e5">
+<title>Panel de QR</title>
 <style>
-:root{--bg:#f6f5f1;--card:#fff;--tx:#1c1c1a;--mu:#6b6a65;--bd:#e2e0d8;--ac:#2d5be3}
-@media (prefers-color-scheme:dark){:root{--bg:#17171a;--card:#222226;--tx:#f0efea;--mu:#9d9c96;--bd:#35353a;--ac:#6f93ff}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-#app{max-width:640px;margin:0 auto;padding:16px}
-h1{font-size:22px;margin:8px 0 4px}h2{font-size:16px;margin:0}
-.mu{color:var(--mu);font-size:14px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:12px 0}
-.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.n{font-size:24px;font-weight:700;color:var(--ac)}
-button{font:inherit;padding:9px 14px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer;margin:8px 8px 0 0}
-.qr{background:#fff;padding:10px;border-radius:12px;display:inline-block;line-height:0;margin-top:10px}
-.qr svg{width:220px;height:220px}
-.url{word-break:break-all;font-size:13px;color:var(--mu)}
-.center{text-align:center;padding-top:15vh}
+:root{--bg:#f4f5fb;--card:#fff;--tx:#161a2d;--mu:#6a708a;--bd:#e5e7f2;--ac:#4f46e5;--ac2:#7c3aed;--ok:#16a34a;--dg:#dc2626;--sh:0 8px 30px rgba(30,35,90,.08)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1120;--card:#191c31;--tx:#eef0ff;--mu:#9aa1c4;--bd:#2a2e4d;--ac:#818cf8;--ac2:#a78bfa;--sh:0 8px 30px rgba(0,0,0,.35)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#app{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:26px;line-height:1.2;margin:0}
+h2{font-size:17px;margin:0}
+.sub{color:var(--mu);margin:6px 0 0;font-size:15px}
+/* login */
+.login{min-height:85vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.brand{width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;margin-bottom:18px;box-shadow:0 10px 26px rgba(79,70,229,.35)}
+.brand svg{width:36px;height:36px}
+.box{background:var(--card);border:1px solid var(--bd);border-radius:20px;box-shadow:var(--sh);padding:22px;margin-top:24px;width:100%;max-width:400px;text-align:left}
+/* fields */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+.field small{display:block;color:var(--mu);font-size:12px;margin-top:5px}
+input{width:100%;padding:13px 14px;border:1.5px solid var(--bd);border-radius:12px;background:var(--bg);color:var(--tx);font:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus{border-color:var(--ac);box-shadow:0 0 0 4px rgba(99,102,241,.18)}
+/* buttons */
+.btn{font:inherit;font-weight:600;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;background:var(--bg);color:var(--tx);border:1.5px solid var(--bd);transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;border:0;box-shadow:0 6px 16px rgba(79,70,229,.3)}
+.btn.block{width:100%}
+.btn.dg{color:var(--dg);border-color:transparent;background:transparent}
+.btn.sm{padding:9px 14px;font-size:14px}
+/* header */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0 18px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px 16px;box-shadow:var(--sh)}
+.stat b{display:block;font-size:28px;line-height:1.1;color:var(--ac)}
+.stat span{color:var(--mu);font-size:13px}
+.bar{display:flex;justify-content:space-between;align-items:center;margin:22px 0 12px}
+/* cards */
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:var(--sh)}
+.chead{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.av{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;font-weight:700;display:grid;place-items:center;flex:none}
+.chead div{min-width:0;flex:1}
+.chead h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.id{font-size:12px;color:var(--mu)}
+.pill{background:rgba(99,102,241,.12);color:var(--ac);font-weight:700;border-radius:99px;padding:5px 12px;font-size:13px;white-space:nowrap}
+.dest{background:rgba(99,102,241,.07);border:1.5px dashed rgba(99,102,241,.4);border-radius:14px;padding:12px;margin-bottom:12px}
+.dest label{color:var(--ac)}
+.dest input{background:var(--card)}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.acts .grow{flex:1;min-width:140px}
+.empty{text-align:center;color:var(--mu);padding:30px 10px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(10,12,30,.6);display:flex;align-items:center;justify-content:center;padding:18px;z-index:20}
+.sheet{background:var(--card);border-radius:22px;padding:22px;width:100%;max-width:360px;text-align:center}
+.qrbox{background:#fff;border-radius:16px;padding:12px;display:inline-block;line-height:0;margin:14px 0 8px}
+.qrbox svg{width:240px;height:240px;max-width:70vw;max-height:70vw}
+.url{word-break:break-all;color:var(--mu);font-size:12px;margin-bottom:14px}
+.row2{display:flex;gap:8px}.row2 .btn{flex:1}
+/* misc */
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#161a2d;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:30;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.err{background:var(--dg)}
+.load,.center{display:grid;place-items:center;text-align:center;min-height:70vh}
+.spin{width:38px;height:38px;border:4px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:r .8s linear infinite;margin:0 auto 14px}
+@keyframes r{to{transform:rotate(360deg)}}
+@media (min-width:720px){#app{padding-top:36px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div id="toast" class="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 // === CONFIGURACIÓN ===
@@ -33,22 +83,31 @@ const API_KEY = "AIzaSyDmikmWfGnUUj_0k_40gynbCOsHrqa55Vo";
 // =====================
 
 const app = document.getElementById('app');
-const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const okUrl = u => { try { const x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:' } catch (e) { return false } };
 const okCode = c => /^[a-z0-9-]{1,60}$/.test(c);
 const slug = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const base = location.origin + location.pathname;
 const qrUrl = l => base + '?c=' + l.code;
-let session = null, msg = '', openQr = null;
+const LOGO = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3m4 0v4h-4m-3-1v1m0-4v.01"/></svg>';
+let session = null;
 try { session = JSON.parse(localStorage.getItem('qrsession') || 'null') } catch (e) {}
 
+function toast(t, err) {
+  const e = document.getElementById('toast');
+  e.textContent = t; e.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(toast.t); toast.t = setTimeout(() => e.className = 'toast', 3000);
+}
+
+/* ---------- sesión ---------- */
 async function idToken() {
+  if (!session) throw new Error('sin sesion');
   const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(session.refresh)
   });
   const d = await r.json();
-  if (!d.id_token) throw new Error('sesion');
+  if (!d.id_token) throw new Error('sesion vencida');
   return d.id_token;
 }
 async function login(email, pw) {
@@ -62,7 +121,11 @@ async function login(email, pw) {
   try { localStorage.setItem('qrsession', JSON.stringify(session)) } catch (e) {}
   return true;
 }
-function logout() { session = null; try { localStorage.removeItem('qrsession') } catch (e) {} admin() }
+function logout(note) {
+  session = null;
+  try { localStorage.removeItem('qrsession') } catch (e) {}
+  loginView(); if (note) toast(note, true);
+}
 async function writeLink(code, obj) {
   try {
     const t = await idToken();
@@ -70,19 +133,16 @@ async function writeLink(code, obj) {
     return r.ok;
   } catch (e) { return false }
 }
-async function readLinks() {
-  const o = (await (await fetch(DB + '/links.json')).json()) || {};
-  return Object.keys(o).map(k => ({ code: k, name: o[k].name, url: o[k].url }));
-}
 
+/* ---------- redirección pública (lo que ve quien escanea) ---------- */
 async function redirect(code) {
+  app.innerHTML = '<div class="center"><div><div class="spin"></div><h2>Abriendo…</h2></div></div>';
   let l = null;
   try { if (okCode(code)) l = await (await fetch(DB + '/links/' + code + '.json')).json() } catch (e) {}
   if (!l || !okUrl(l.url)) {
-    app.innerHTML = '<div class="center"><h1>Código no encontrado</h1><p class="mu">Este QR ya no está activo.</p></div>';
+    app.innerHTML = '<div class="center"><div><div class="brand" style="margin:0 auto 16px">' + LOGO + '</div><h1>Código no disponible</h1><p class="sub">Este QR ya no está activo.</p></div></div>';
     return;
   }
-  app.innerHTML = '<div class="center"><h1>Redirigiendo…</h1><p><a href="' + esc(l.url) + '">' + esc(l.url) + '</a></p></div>';
   const count = fetch(DB + '/scans/' + code + '.json', {
     method: 'PUT', keepalive: true, body: JSON.stringify({ '.sv': { increment: 1 } })
   }).catch(() => {});
@@ -90,79 +150,102 @@ async function redirect(code) {
   location.replace(l.url);
 }
 
-async function admin() {
+/* ---------- login ---------- */
+function loginView() {
+  app.innerHTML = '<div class="login"><div class="brand">' + LOGO + '</div><h1>Panel de QR</h1><p class="sub">Inicia sesión para administrar tus códigos</p>' +
+    '<form class="box" id="f"><div class="field"><label for="e">Correo</label><input id="e" type="email" autocomplete="username" placeholder="tucorreo@gmail.com" required></div>' +
+    '<div class="field"><label for="p">Contraseña</label><input id="p" type="password" autocomplete="current-password" placeholder="••••••••" required></div>' +
+    '<button class="btn pri block" id="go" type="submit">Entrar</button></form></div>';
+  document.getElementById('f').onsubmit = async ev => {
+    ev.preventDefault();
+    const b = document.getElementById('go'); b.disabled = true; b.textContent = 'Entrando…';
+    const ok = await login(document.getElementById('e').value.trim(), document.getElementById('p').value);
+    if (ok) panel(); else { b.disabled = false; b.textContent = 'Entrar'; toast('Correo o contraseña incorrectos', true) }
+  };
+}
+
+/* ---------- panel ---------- */
+async function panel() {
+  app.innerHTML = '<div class="load"><div><div class="spin"></div><p class="sub">Cargando tus QR…</p></div></div>';
+  let t; try { t = await idToken() } catch (e) { logout('Tu sesión venció, entra de nuevo'); return }
   let links = [], scans = {};
-  try { links = await readLinks() } catch (e) { app.innerHTML = '<p>No se pudo conectar con Firebase.</p>'; return }
-  try { scans = (await (await fetch(DB + '/scans.json')).json()) || {} } catch (e) {}
+  try {
+    const o = (await (await fetch(DB + '/links.json?auth=' + t)).json()) || {};
+    if (o.error) throw new Error(o.error);
+    links = Object.keys(o).map(k => ({ code: k, name: o[k].name, url: o[k].url })).sort((a, b) => a.name.localeCompare(b.name));
+    const s = (await (await fetch(DB + '/scans.json?auth=' + t)).json()) || {};
+    if (!s.error) scans = s;
+  } catch (e) { app.innerHTML = '<div class="center"><p>No se pudo cargar. Revisa tu conexión y recarga.</p></div>'; return }
   const total = links.reduce((a, l) => a + (scans[l.code] || 0), 0);
-  let h = '<h1>QR dinámico</h1><p class="mu">Escaneos totales: <b>' + total + '</b></p>';
-  if (msg) h += '<div class="card">' + esc(msg) + '</div>';
-  if (session) {
-    h += '<div class="card"><h2>Nuevo QR</h2><label>Nombre</label><input id="n" placeholder="Ej. Café Luna"><label>ID del QR (opcional)</label><input id="i" placeholder="se genera del nombre"><label>Enlace de destino</label><input id="u" inputmode="url" placeholder="https://search.google.com/local/writereview?placeid=…"><button class="pri" id="add">Crear QR</button></div>';
-  }
-  if (!links.length) h += '<p class="mu">Aún no hay QR creados.</p>';
+
+  let h = '<div class="top"><div><h1>Mis QR</h1><p class="sub">' + esc(session.email) + '</p></div><button class="btn sm" id="out">Salir</button></div>' +
+    '<div class="stats"><div class="stat"><b>' + links.length + '</b><span>QR creados</span></div><div class="stat"><b>' + total + '</b><span>Escaneos totales</span></div></div>' +
+    '<button class="btn pri block" id="tg">+ Nuevo QR</button>' +
+    '<div class="card" id="nf" style="display:none;margin-top:14px"><h2 style="margin-bottom:14px">Nuevo QR</h2>' +
+    '<div class="field"><label>Nombre del negocio</label><input id="nn" placeholder="Ej. Café Luna"></div>' +
+    '<div class="field"><label>ID del QR <span style="font-weight:400;color:var(--mu)">(opcional)</span></label><input id="ni" placeholder="Se crea solo a partir del nombre"><small>Solo letras, números y guiones. No se puede cambiar después.</small></div>' +
+    '<div class="field"><label>Enlace de destino</label><input id="nu" inputmode="url" placeholder="https://search.google.com/local/writereview?placeid=…"></div>' +
+    '<button class="btn pri block" id="add">Crear QR</button></div>';
+  h += '<div class="bar"><h2>Tus códigos</h2></div>';
+  if (!links.length) h += '<div class="empty">Aún no tienes QR.<br>Toca «Nuevo QR» para crear el primero.</div>';
   links.forEach((l, i) => {
-    h += '<div class="card"><div class="top"><h2>' + esc(l.name) + '</h2><span class="n">' + (scans[l.code] || 0) + '</span></div><div class="url">ID: ' + esc(l.code) + '</div>';
-    if (session) h += '<label>Destino</label><input data-u="' + i + '" inputmode="url" value="' + esc(l.url) + '">';
-    else h += '<div class="url">→ ' + esc(l.url) + '</div>';
-    h += '<button data-qr="' + i + '">' + (openQr === i ? 'Ocultar QR' : 'Ver QR') + '</button>';
-    if (session) h += '<button data-save="' + i + '">Guardar destino</button><button class="del" data-del="' + i + '">Borrar</button>';
-    h += '<div id="q' + i + '"></div></div>';
+    h += '<div class="card"><div class="chead"><div class="av">' + esc((l.name || '?').charAt(0).toUpperCase()) + '</div><div><h2>' + esc(l.name) + '</h2><span class="id">ID: ' + esc(l.code) + '</span></div><span class="pill">' + (scans[l.code] || 0) + ' escaneos</span></div>' +
+      '<div class="field"><label>Nombre</label><input data-n="' + i + '" value="' + esc(l.name) + '"></div>' +
+      '<div class="dest"><div class="field" style="margin:0"><label>Enlace de destino (a dónde lleva el QR)</label><input data-u="' + i + '" inputmode="url" value="' + esc(l.url) + '"></div></div>' +
+      '<div class="acts"><button class="btn pri grow" data-save="' + i + '">Guardar cambios</button><button class="btn grow" data-qr="' + i + '">Ver QR</button><button class="btn dg" data-del="' + i + '">Borrar</button></div></div>';
   });
-  if (session) h += '<p class="mu">Sesión: ' + esc(session.email) + ' · <a href="#" id="out">Salir</a></p>';
-  else h += '<div class="card"><h2>Administrador</h2><label>Correo</label><input id="e" type="email"><label>Contraseña</label><input id="p" type="password"><button class="pri" id="in">Entrar</button></div>';
   app.innerHTML = h;
   const g = id => document.getElementById(id);
-  if (g('in')) g('in').onclick = async () => {
-    msg = (await login(g('e').value.trim(), g('p').value)) ? '' : 'Correo o contraseña incorrectos.';
-    admin();
-  };
-  if (g('out')) g('out').onclick = e => { e.preventDefault(); logout() };
-  if (g('add')) g('add').onclick = async () => {
-    const name = g('n').value.trim(), url = g('u').value.trim();
-    let code = slug(g('i').value.trim() || name);
-    if (!name || !code || !okUrl(url)) { msg = 'Escribe un nombre y un enlace válido (https://…).'; admin(); return }
-    if (links.some(x => x.code === code)) { msg = 'Ya existe un QR con ese ID.'; admin(); return }
-    msg = (await writeLink(code, { name, url })) ? 'QR creado.' : 'No se pudo guardar. Vuelve a entrar como administrador.';
-    openQr = null; admin();
+  g('out').onclick = () => logout();
+  g('tg').onclick = () => { const f = g('nf'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; if (f.style.display === 'block') g('nn').focus() };
+  g('add').onclick = async () => {
+    const name = g('nn').value.trim(), url = g('nu').value.trim(), code = slug(g('ni').value.trim() || name);
+    if (!name || !code) return toast('Escribe el nombre', true);
+    if (!okUrl(url)) return toast('El enlace debe empezar con https://', true);
+    if (links.some(x => x.code === code)) return toast('Ya existe un QR con ese ID', true);
+    g('add').disabled = true;
+    if (await writeLink(code, { name, url })) { toast('QR creado'); panel() } else { g('add').disabled = false; toast('No se pudo guardar', true) }
   };
   app.querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
-    const l = links[+b.dataset.save], v = app.querySelector('[data-u="' + b.dataset.save + '"]').value.trim();
-    if (!okUrl(v)) { msg = 'Enlace inválido.'; admin(); return }
-    msg = (await writeLink(l.code, { name: l.name, url: v })) ? 'Destino actualizado.' : 'No se pudo guardar.';
-    admin();
+    const i = +b.dataset.save, l = links[i];
+    const name = app.querySelector('[data-n="' + i + '"]').value.trim(), url = app.querySelector('[data-u="' + i + '"]').value.trim();
+    if (!name) return toast('El nombre no puede quedar vacío', true);
+    if (!okUrl(url)) return toast('El enlace debe empezar con https://', true);
+    b.disabled = true;
+    if (await writeLink(l.code, { name, url })) { toast('Cambios guardados'); panel() } else { b.disabled = false; toast('No se pudo guardar', true) }
   });
   app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     const l = links[+b.dataset.del];
-    if (!confirm('¿Borrar este QR? Los QR impresos dejarán de funcionar.')) return;
-    msg = (await writeLink(l.code, null)) ? 'QR borrado.' : 'No se pudo borrar.';
-    admin();
+    if (!confirm('¿Borrar «' + l.name + '»? Los QR ya impresos dejarán de funcionar.')) return;
+    if (await writeLink(l.code, null)) { toast('QR borrado'); panel() } else toast('No se pudo borrar', true);
   });
-  app.querySelectorAll('[data-qr]').forEach(b => b.onclick = () => {
-    const i = +b.dataset.qr;
-    if (openQr === i) { openQr = null; document.getElementById('q' + i).innerHTML = ''; b.textContent = 'Ver QR'; return }
-    openQr = i; b.textContent = 'Ocultar QR'; showQr(links[i], i);
-  });
+  app.querySelectorAll('[data-qr]').forEach(b => b.onclick = () => showQr(links[+b.dataset.qr]));
 }
 
-function showQr(l, i) {
+function showQr(l) {
   const q = qrcode(0, 'M'); q.addData(qrUrl(l)); q.make();
-  const box = document.getElementById('q' + i);
-  box.innerHTML = '<div class="qr">' + q.createSvgTag(6, 2) + '</div><div class="url">' + esc(qrUrl(l)) +
-    '</div><button id="s' + i + '">Descargar SVG</button><button id="p' + i + '">Descargar PNG</button>';
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = '<div class="sheet"><h2>' + esc(l.name) + '</h2><div class="qrbox">' + q.createSvgTag(6, 2) + '</div><div class="url">' + esc(qrUrl(l)) + '</div>' +
+    '<div class="row2"><button class="btn sm" id="ds">SVG</button><button class="btn pri sm" id="dp">Descargar PNG</button></div>' +
+    '<div class="row2" style="margin-top:8px"><button class="btn sm" id="cp">Copiar enlace</button><button class="btn sm" id="cl">Cerrar</button></div></div>';
+  document.body.appendChild(m);
+  const close = () => m.remove();
+  m.onclick = e => { if (e.target === m) close() };
+  m.querySelector('#cl').onclick = close;
+  m.querySelector('#cp').onclick = () => { navigator.clipboard.writeText(qrUrl(l)).then(() => toast('Enlace copiado'), () => toast('No se pudo copiar', true)) };
   const save = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click() };
-  document.getElementById('s' + i).onclick = () => save(new Blob([q.createSvgTag(10, 4)], { type: 'image/svg+xml' }), l.code + '.svg');
-  document.getElementById('p' + i).onclick = () => {
-    const n = q.getModuleCount(), s = 12, m = 4, size = (n + m * 2) * s, c = document.createElement('canvas');
+  m.querySelector('#ds').onclick = () => save(new Blob([q.createSvgTag(10, 4)], { type: 'image/svg+xml' }), l.code + '.svg');
+  m.querySelector('#dp').onclick = () => {
+    const n = q.getModuleCount(), s = 12, mg = 4, size = (n + mg * 2) * s, c = document.createElement('canvas');
     c.width = c.height = size;
     const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, size, size); x.fillStyle = '#000';
-    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect((k + m) * s, (r + m) * s, s, s);
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect((k + mg) * s, (r + mg) * s, s, s);
     c.toBlob(b => save(b, l.code + '.png'), 'image/png');
   };
 }
 
 const code = new URLSearchParams(location.search).get('c');
-code ? redirect(code) : admin();
+if (code) redirect(code); else if (session) panel(); else loginView();
 </script>
 </body>
 </html>
