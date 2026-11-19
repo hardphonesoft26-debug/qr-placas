@@ -77,6 +77,36 @@ input.bad{border-color:var(--dg)}
 .load,.center{display:grid;place-items:center;text-align:center;min-height:70vh}
 .spin{width:38px;height:38px;border:4px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:r .8s linear infinite;margin:0 auto 14px}
 @keyframes r{to{transform:rotate(360deg)}}
+.tools{display:flex;gap:10px;margin-bottom:12px}
+.tools input{flex:1;min-width:0}
+.tools .btn{white-space:nowrap}
+.tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--bd);border-radius:18px;box-shadow:var(--sh);overflow:hidden}
+.tbl th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mu);padding:12px 14px;border-bottom:1px solid var(--bd);background:var(--bg)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .dst{max-width:240px}
+.tbl .dst span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mu);font-size:13px}
+.tbl .ac{white-space:nowrap;text-align:right}
+.tbl .ac .btn{margin-left:6px}
+.idb{display:inline-block;background:rgba(99,102,241,.12);color:var(--ac);font-weight:700;border-radius:8px;padding:2px 9px;font-size:14px}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;color:var(--mu);font-size:13px;text-align:center}
+.pager:has(> span:only-child){justify-content:center}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.sheet.wide{max-width:460px;text-align:left}
+@media (max-width:719px){
+.tools{flex-direction:column}
+.tbl,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+.tbl{background:transparent;border:0;box-shadow:none;border-radius:0}
+.tbl thead{display:none}
+.tbl tr{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:10px 14px;margin-bottom:12px;box-shadow:var(--sh)}
+.tbl td{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:7px 0;border:0;text-align:right}
+.tbl td::before{content:attr(data-label);color:var(--mu);font-size:12px;font-weight:600;flex:none;text-align:left}
+.tbl .dst{max-width:none}
+.tbl .dst span{white-space:normal;word-break:break-all;overflow:visible}
+.tbl td.ac{display:flex;gap:8px;padding-top:10px}
+.tbl td.ac::before{display:none}
+.tbl .ac .btn{flex:1;margin:0}
+}
 @media (min-width:720px){#app{padding-top:36px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
@@ -212,32 +242,60 @@ async function panel() {
   try {
     const o = (await (await fetch(DB + '/links.json?auth=' + t)).json()) || {};
     if (o.error) throw new Error(o.error);
-    links = Object.keys(o).map(k => ({ code: k, name: o[k].name, url: o[k].url })).sort((a, b) => a.name.localeCompare(b.name));
+    links = Object.keys(o).map(k => ({ code: k, name: o[k].name, url: o[k].url }));
     const s = (await (await fetch(DB + '/scans.json?auth=' + t)).json()) || {};
     if (!s.error) scans = s;
   } catch (e) { app.innerHTML = '<div class="center"><p>No se pudo cargar. Revisa tu conexión y recarga.</p></div>'; return }
   const total = links.reduce((a, l) => a + (scans[l.code] || 0), 0);
+  const PAGE = 5; let q = '', page = 1, desc = true;
+  const norm = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const cmp = (a, b) => (/^\d+$/.test(a.code) && /^\d+$/.test(b.code)) ? (+a.code - +b.code) : a.code.localeCompare(b.code, undefined, { numeric: true });
 
-  let h = '<div class="top"><div><h1>Mis QR</h1><p class="sub">' + esc(session.email) + '</p></div><button class="btn sm" id="out">Salir</button></div>' +
+  app.innerHTML = '<div class="top"><div><h1>Mis QR</h1><p class="sub">' + esc(session.email) + '</p></div><button class="btn sm" id="out">Salir</button></div>' +
     '<div class="stats"><div class="stat"><b>' + links.length + '</b><span>QR creados</span></div><div class="stat"><b>' + total + '</b><span>Escaneos totales</span></div></div>' +
     '<button class="btn pri block" id="tg">+ Nuevo QR</button>' +
     '<div class="card" id="nf" style="display:none;margin-top:14px"><h2 style="margin-bottom:14px">Nuevo QR</h2>' +
     '<div class="field"><label>Negocio (a quién pertenece)</label><input id="nn" placeholder="Ej. Café Luna"></div>' +
     '<p class="sub" style="margin:-4px 0 14px;font-size:13px">El ID del QR se asigna solo, en secuencia (11, 12, 13…).</p>' +
     '<div class="field"><label>Enlace de destino</label><input id="nu" inputmode="url" placeholder="https://search.google.com/local/writereview?placeid=…"></div>' +
-    '<button class="btn pri block" id="add">Crear QR</button></div>';
-  h += '<div class="bar"><h2>Tus códigos</h2></div>';
-  if (!links.length) h += '<div class="empty">Aún no tienes QR.<br>Toca «Nuevo QR» para crear el primero.</div>';
-  links.forEach((l, i) => {
-    h += '<div class="card"><div class="chead"><div class="av">' + esc((l.name || '?').charAt(0).toUpperCase()) + '</div><div><h2>' + esc(l.name) + '</h2><span class="id">ID: ' + esc(l.code) + '</span></div><span class="pill">' + (scans[l.code] || 0) + ' escaneos</span></div>' +
-      '<div class="qrlink"><span>Enlace del QR (el ID forma parte del enlace)</span>' + esc(base) + '?c=<mark>' + esc(l.code) + '</mark></div>' +
-      '<div class="field"><label>Negocio dueño de esta placa</label><input data-n="' + i + '" value="' + esc(l.name) + '"><small>Si el negocio ya no la quiere, cambia aquí el nombre y abajo el destino para dársela a otro. El QR impreso sigue igual.</small></div>' +
-      '<div class="dest"><div class="field" style="margin:0"><label>Enlace de destino (a dónde lleva el QR)</label><input data-u="' + i + '" inputmode="url" value="' + esc(l.url) + '"></div></div>' +
-      '<div class="acts"><button class="btn pri grow" data-save="' + i + '">Guardar cambios</button><button class="btn grow" data-qr="' + i + '">Ver QR</button><button class="btn dg" data-del="' + i + '">Borrar</button></div></div>';
-  });
-  app.innerHTML = h;
+    '<button class="btn pri block" id="add">Crear QR</button></div>' +
+    '<div class="bar"><h2>Tus códigos</h2></div>' +
+    '<div class="tools"><input id="sq" type="search" placeholder="Buscar por ID, negocio o enlace…" autocomplete="off"><button class="btn sm" id="so"></button></div>' +
+    '<div id="tb"></div><div class="pager" id="pg"></div>';
   const g = id => document.getElementById(id);
+
+  const draw = () => {
+    const nq = norm(q.trim());
+    const rows = links.filter(l => !nq || norm(l.code + ' ' + l.name + ' ' + l.url).includes(nq)).sort((a, b) => desc ? cmp(b, a) : cmp(a, b));
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+    if (page > pages) page = pages;
+    const view = rows.slice((page - 1) * PAGE, page * PAGE);
+    g('so').textContent = 'ID: ' + (desc ? 'mayor a menor ↓' : 'menor a mayor ↑');
+    if (!links.length) g('tb').innerHTML = '<div class="empty">Aún no tienes QR.<br>Toca «Nuevo QR» para crear el primero.</div>';
+    else if (!rows.length) g('tb').innerHTML = '<div class="empty">Sin resultados para «' + esc(q) + '»</div>';
+    else {
+      let h = '<table class="tbl"><thead><tr><th>ID</th><th>Negocio</th><th>Destino</th><th>Escaneos</th><th></th></tr></thead><tbody>';
+      view.forEach(l => {
+        h += '<tr><td data-label="ID"><span class="idb">' + esc(l.code) + '</span></td>' +
+          '<td data-label="Negocio"><b>' + esc(l.name) + '</b></td>' +
+          '<td data-label="Destino" class="dst"><span title="' + esc(l.url) + '">' + esc(l.url) + '</span></td>' +
+          '<td data-label="Escaneos"><span class="pill">' + (scans[l.code] || 0) + '</span></td>' +
+          '<td class="ac"><button class="btn sm" data-qr="' + esc(l.code) + '">Ver QR</button><button class="btn sm pri" data-ed="' + esc(l.code) + '">Editar</button></td></tr>';
+      });
+      g('tb').innerHTML = h + '</tbody></table>';
+    }
+    g('pg').innerHTML = rows.length > PAGE
+      ? '<button class="btn sm" id="pv"' + (page <= 1 ? ' disabled' : '') + '>‹ Anterior</button><span>Página ' + page + ' de ' + pages + ' · ' + rows.length + ' QR</span><button class="btn sm" id="nx"' + (page >= pages ? ' disabled' : '') + '>Siguiente ›</button>'
+      : (rows.length ? '<span>' + rows.length + ' QR</span>' : '');
+    if (g('pv')) { g('pv').onclick = () => { page--; draw() }; g('nx').onclick = () => { page++; draw() } }
+    app.querySelectorAll('[data-qr]').forEach(b => b.onclick = () => showQr(links.find(x => x.code === b.dataset.qr)));
+    app.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => editQr(links.find(x => x.code === b.dataset.ed)));
+  };
+  draw();
+
   g('out').onclick = () => logout();
+  g('sq').oninput = ev => { q = ev.target.value; page = 1; draw() };
+  g('so').onclick = () => { desc = !desc; page = 1; draw() };
   g('tg').onclick = () => { const f = g('nf'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; if (f.style.display === 'block') g('nn').focus() };
   g('add').onclick = async () => {
     const name = g('nn').value.trim(), url = g('nu').value.trim();
@@ -253,20 +311,30 @@ async function panel() {
       toast('QR creado con ID ' + code); panel();
     } else { g('add').disabled = false; toast('No se pudo guardar', true) }
   };
-  app.querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
-    const i = +b.dataset.save, l = links[i];
-    const name = app.querySelector('[data-n="' + i + '"]').value.trim(), url = app.querySelector('[data-u="' + i + '"]').value.trim();
+}
+
+function editQr(l) {
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = '<div class="sheet wide"><h2>Editar QR <span class="idb">' + esc(l.code) + '</span></h2>' +
+    '<div class="field" style="margin-top:16px"><label>Negocio dueño de esta placa</label><input id="en" value="' + esc(l.name) + '"><small>Si el negocio ya no la quiere, cambia el nombre y el destino para dársela a otro. El QR impreso sigue igual.</small></div>' +
+    '<div class="dest"><div class="field" style="margin:0"><label>Enlace de destino (a dónde lleva el QR)</label><input id="eu" inputmode="url" value="' + esc(l.url) + '"></div></div>' +
+    '<button class="btn pri block" id="es" style="margin-top:14px">Guardar cambios</button>' +
+    '<div class="row2" style="margin-top:8px"><button class="btn sm" id="ec">Cancelar</button><button class="btn dg sm" id="ed">Borrar QR</button></div></div>';
+  document.body.appendChild(m);
+  const close = () => m.remove(), g = id => m.querySelector('#' + id);
+  m.onclick = e => { if (e.target === m) close() };
+  g('ec').onclick = close;
+  g('es').onclick = async () => {
+    const name = g('en').value.trim(), url = g('eu').value.trim();
     if (!name) return toast('El nombre no puede quedar vacío', true);
     if (!okUrl(url)) return toast('El enlace debe empezar con https://', true);
-    b.disabled = true;
-    if (await writeLink(l.code, { name, url })) { toast('Cambios guardados'); panel() } else { b.disabled = false; toast('No se pudo guardar', true) }
-  });
-  app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
-    const l = links[+b.dataset.del];
+    g('es').disabled = true;
+    if (await writeLink(l.code, { name, url })) { close(); toast('Cambios guardados'); panel() } else { g('es').disabled = false; toast('No se pudo guardar', true) }
+  };
+  g('ed').onclick = async () => {
     if (!confirm('¿Borrar «' + l.name + '»? Los QR ya impresos dejarán de funcionar.')) return;
-    if (await writeLink(l.code, null)) { toast('QR borrado'); panel() } else toast('No se pudo borrar', true);
-  });
-  app.querySelectorAll('[data-qr]').forEach(b => b.onclick = () => showQr(links[+b.dataset.qr]));
+    if (await writeLink(l.code, null)) { close(); toast('QR borrado'); panel() } else toast('No se pudo borrar', true);
+  };
 }
 
 function qrSvg(q, code, cell, mg) {
