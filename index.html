@@ -67,7 +67,7 @@ input.bad{border-color:var(--dg)}
 .modal{position:fixed;inset:0;background:rgba(10,12,30,.6);display:flex;align-items:center;justify-content:center;padding:18px;z-index:20}
 .sheet{background:var(--card);border-radius:22px;padding:22px;width:100%;max-width:360px;text-align:center}
 .qrbox{background:#fff;border-radius:16px;padding:12px;display:inline-block;line-height:0;margin:14px 0 8px}
-.qrbox svg{width:240px;height:240px;max-width:70vw;max-height:70vw}
+.qrbox svg{width:240px;height:auto;max-width:70vw}
 .url{word-break:break-all;color:var(--mu);font-size:12px;margin-bottom:14px}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
 /* misc */
@@ -269,10 +269,19 @@ async function panel() {
   app.querySelectorAll('[data-qr]').forEach(b => b.onclick = () => showQr(links[+b.dataset.qr]));
 }
 
+function qrSvg(q, code, cell, mg) {
+  const n = q.getModuleCount(), size = (n + mg * 2) * cell, band = cell * 4, H = size + band;
+  let d = '';
+  for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) d += 'M' + ((k + mg) * cell) + ' ' + ((r + mg) * cell) + 'h' + cell + 'v' + cell + 'h-' + cell + 'z';
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + size + ' ' + H + '" width="' + size + '" height="' + H + '"><rect width="100%" height="100%" fill="#fff"/>' +
+    '<path d="' + d + '" fill="#000" shape-rendering="crispEdges"/>' +
+    '<text x="' + (size / 2) + '" y="' + (size + band * 0.5) + '" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="' + (cell * 2.2) + '" fill="#9a9a9a">[' + esc(code) + ']</text></svg>';
+}
+
 function showQr(l) {
   const q = qrcode(0, 'M'); q.addData(qrUrl(l)); q.make();
   const m = document.createElement('div'); m.className = 'modal';
-  m.innerHTML = '<div class="sheet"><h2>' + esc(l.name) + '</h2><div class="qrbox">' + q.createSvgTag(6, 2) + '</div><div class="url"><b>Destino:</b> ' + esc(l.url) + '</div>' +
+  m.innerHTML = '<div class="sheet"><h2>' + esc(l.name) + '</h2><div class="qrbox">' + qrSvg(q, l.code, 6, 4) + '</div><div class="url"><b>Destino:</b> ' + esc(l.url) + '</div>' +
     '<div class="row2"><button class="btn sm" id="ds">SVG</button><button class="btn pri sm" id="dp">Descargar PNG</button></div>' +
     '<div class="row2" style="margin-top:8px"><button class="btn sm" id="cp">Copiar destino</button><button class="btn sm" id="cl">Cerrar</button></div></div>';
   document.body.appendChild(m);
@@ -281,12 +290,14 @@ function showQr(l) {
   m.querySelector('#cl').onclick = close;
   m.querySelector('#cp').onclick = () => { navigator.clipboard.writeText(l.url).then(() => toast('Enlace de destino copiado'), () => toast('No se pudo copiar', true)) };
   const save = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click() };
-  m.querySelector('#ds').onclick = () => save(new Blob([q.createSvgTag(10, 4)], { type: 'image/svg+xml' }), l.code + '.svg');
+  m.querySelector('#ds').onclick = () => save(new Blob([qrSvg(q, l.code, 10, 4)], { type: 'image/svg+xml' }), l.code + '.svg');
   m.querySelector('#dp').onclick = () => {
-    const n = q.getModuleCount(), s = 40, mg = 4, size = (n + mg * 2) * s, c = document.createElement('canvas');
-    c.width = c.height = size;
-    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, size, size); x.fillStyle = '#000';
-    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect((k + mg) * s, (r + mg) * s, s, s);
+    const n = q.getModuleCount(), cs = 40, mg = 4, size = (n + mg * 2) * cs, band = cs * 4, c = document.createElement('canvas');
+    c.width = size; c.height = size + band;
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#000';
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect((k + mg) * cs, (r + mg) * cs, cs, cs);
+    x.fillStyle = '#9a9a9a'; x.font = Math.round(cs * 2.2) + 'px Arial, Helvetica, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('[' + l.code + ']', size / 2, size + band / 2);
     c.toBlob(b => save(b, l.code + '.png'), 'image/png');
   };
 }
