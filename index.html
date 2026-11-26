@@ -123,6 +123,8 @@ const API_KEY = "AIzaSyDmikmWfGnUUj_0k_40gynbCOsHrqa55Vo";
 const app = document.getElementById('app');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const okUrl = u => { try { const x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:' } catch (e) { return false } };
+const sus = u => /writereview/.test(u) && /[?&]placeid=/.test(u) && !/[?&]placeid=(ChIJ|GhIJ)/.test(u);
+const SUSMSG = 'Este enlace parece incompleto: el ID del lugar normalmente empieza con «ChIJ». ¿Guardar de todos modos?';
 const okCode = c => /^[a-z0-9-]{1,60}$/.test(c);
 const slug = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const base = location.origin + location.pathname;
@@ -258,7 +260,7 @@ async function panel() {
     '<div class="field"><label>Negocio (a quién pertenece)</label><input id="nn" placeholder="Ej. Café Luna"></div>' +
     '<p class="sub" style="margin:-4px 0 14px;font-size:13px">El ID del QR se asigna solo, en secuencia (11, 12, 13…).</p>' +
     '<div class="field"><label>Enlace de destino</label><input id="nu" inputmode="url" placeholder="https://search.google.com/local/writereview?placeid=…"></div>' +
-    '<button class="btn pri block" id="add">Crear QR</button></div>' +
+    '<button class="btn pri block" id="add">Crear QR</button><button class="btn block" id="nt" style="margin-top:8px">Probar enlace</button></div>' +
     '<div class="bar"><h2>Tus códigos</h2></div>' +
     '<div class="tools"><input id="sq" type="search" placeholder="Buscar por ID, negocio o enlace…" autocomplete="off"><button class="btn sm" id="so"></button></div>' +
     '<div id="tb"></div><div class="pager" id="pg"></div>';
@@ -297,10 +299,12 @@ async function panel() {
   g('sq').oninput = ev => { q = ev.target.value; page = 1; draw() };
   g('so').onclick = () => { desc = !desc; page = 1; draw() };
   g('tg').onclick = () => { const f = g('nf'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; if (f.style.display === 'block') g('nn').focus() };
+  g('nt').onclick = () => { const u = g('nu').value.trim(); if (!okUrl(u)) return toast('Escribe primero un enlace válido (https://…)', true); window.open(u, '_blank', 'noopener') };
   g('add').onclick = async () => {
     const name = g('nn').value.trim(), url = g('nu').value.trim();
     if (!name) return toast('Escribe el nombre del negocio', true);
     if (!okUrl(url)) return toast('El enlace debe empezar con https://', true);
+    if (sus(url) && !confirm(SUSMSG)) return;
     g('add').disabled = true;
     let c = 0;
     try { const r = await (await fetch(DB + '/counter.json?auth=' + t)).json(); if (typeof r === 'number') c = r } catch (e) {}
@@ -318,16 +322,18 @@ function editQr(l) {
   m.innerHTML = '<div class="sheet wide"><h2>Editar QR <span class="idb">' + esc(l.code) + '</span></h2>' +
     '<div class="field" style="margin-top:16px"><label>Negocio dueño de esta placa</label><input id="en" value="' + esc(l.name) + '"><small>Si el negocio ya no la quiere, cambia el nombre y el destino para dársela a otro. El QR impreso sigue igual.</small></div>' +
     '<div class="dest"><div class="field" style="margin:0"><label>Enlace de destino (a dónde lleva el QR)</label><input id="eu" inputmode="url" value="' + esc(l.url) + '"></div></div>' +
-    '<button class="btn pri block" id="es" style="margin-top:14px">Guardar cambios</button>' +
+    '<div class="row2" style="margin-top:14px"><button class="btn pri" id="es">Guardar cambios</button><button class="btn" id="et">Probar enlace</button></div>' +
     '<div class="row2" style="margin-top:8px"><button class="btn sm" id="ec">Cancelar</button><button class="btn dg sm" id="ed">Borrar QR</button></div></div>';
   document.body.appendChild(m);
   const close = () => m.remove(), g = id => m.querySelector('#' + id);
   m.onclick = e => { if (e.target === m) close() };
   g('ec').onclick = close;
+  g('et').onclick = () => { const u = g('eu').value.trim(); if (!okUrl(u)) return toast('El enlace debe empezar con https://', true); window.open(u, '_blank', 'noopener') };
   g('es').onclick = async () => {
     const name = g('en').value.trim(), url = g('eu').value.trim();
     if (!name) return toast('El nombre no puede quedar vacío', true);
     if (!okUrl(url)) return toast('El enlace debe empezar con https://', true);
+    if (sus(url) && !confirm(SUSMSG)) return;
     g('es').disabled = true;
     if (await writeLink(l.code, { name, url })) { close(); toast('Cambios guardados'); panel() } else { g('es').disabled = false; toast('No se pudo guardar', true) }
   };
